@@ -20,6 +20,7 @@
           <input type="text" id="search" placeholder="Поиск мелодии..." autocomplete="off">
           <div class="dropdown" id="dropdown"></div>
         </div>
+        <button type="button" class="btn-library" onclick="openLibrary()">Вся библиотека</button>
       </div>
 
       <!-- Player + Sheet (shown after song select) -->
@@ -37,6 +38,9 @@
             <input type="text" id="search2" placeholder="Другая мелодия..." autocomplete="off">
             <div class="dropdown" id="dropdown2"></div>
           </div>
+          <button type="button" class="btn-library btn-library-inline" onclick="openLibrary()" title="Все мелодии">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          </button>
           <div class="controls">
             <button class="cb" onclick="restartSong()" title="Сначала">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
@@ -60,14 +64,27 @@
 
       <!-- Piano always at bottom -->
       <div class="piano-area">
+        <div class="piano-nav">
+          <span class="piano-nav-label">Прокрутка клавиатуры</span>
+          <input type="range" class="piano-slider" id="pianoSlider" min="0" max="100" value="0" step="0.5">
+        </div>
         <div class="piano-viewport" id="pianoViewport">
           <div class="piano" id="piano"></div>
         </div>
-        <input type="range" class="piano-slider" id="pianoSlider" min="0" max="100" value="0" step="0.5">
       </div>
     </main>
 
     <aside class="ad">AD</aside>
+  </div>
+
+  <div id="libraryModal" class="library-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="libraryTitle">
+    <div class="library-panel">
+      <div class="library-head">
+        <h3 id="libraryTitle">Все мелодии</h3>
+        <button type="button" class="library-close" onclick="closeLibrary()" aria-label="Закрыть">×</button>
+      </div>
+      <div class="library-list" id="libraryList"></div>
+    </div>
   </div>
 
   <script src="audio.js"></script>

@@ -10,15 +10,50 @@
   const icPause   = btnPlay.querySelector('.ic-pause');
   const tempoEl   = $('tempo');
   const tempoValEl= $('tempoVal');
+  const libModal  = $('libraryModal');
+  const libList   = $('libraryList');
 
   let song = null, idx = 0, playing = false, paused = false, timer = null;
 
   Piano.build();
   Piano.initSlider();
 
-  // --- Search system (two inputs share logic) ---
+  function fillLibraryList() {
+    libList.innerHTML = SONGS.map(s =>
+      '<button type="button" class="library-item" onclick="playSong(' + s.id + ')">' +
+      '<span class="ico">' + s.icon + '</span>' +
+      '<div><div class="name">' + s.title + '</div><div class="by">' + s.artist + '</div></div></button>'
+    ).join('');
+  }
+
+  window.openLibrary = function () {
+    fillLibraryList();
+    libModal.classList.remove('hidden');
+    libModal.classList.add('open');
+  };
+
+  window.closeLibrary = function () {
+    libModal.classList.remove('open');
+    libModal.classList.add('hidden');
+  };
+
+  libModal.addEventListener('click', e => {
+    if (e.target === libModal) closeLibrary();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && libModal.classList.contains('open')) { e.preventDefault(); closeLibrary(); }
+  });
+
+  // --- Search ---
   setupSearch($('search'), $('dropdown'));
   setupSearch($('search2'), $('dropdown2'));
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search')) {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+    }
+  });
 
   function setupSearch(input, dropdown) {
     let selIdx = -1;
@@ -47,8 +82,6 @@
       else if (e.key === 'Enter' && selIdx >= 0) { e.preventDefault(); items[selIdx].click(); }
       else if (e.key === 'Escape') { dropdown.classList.remove('open'); input.blur(); }
     });
-
-    document.addEventListener('click', e => { if (!e.target.closest('.search')) dropdown.classList.remove('open'); });
   }
 
   function hlItems(items, si) {
@@ -60,6 +93,7 @@
   window.playSong = function (id) {
     const s = SONGS.find(x => x.id === id);
     if (!s) return;
+    closeLibrary();
     document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
     stop();
     song = s;
@@ -138,6 +172,7 @@
   const KM = { a:'C4',w:'C#4',s:'D4',e:'D#4',d:'E4',f:'F4',t:'F#4',g:'G4',y:'G#4',h:'A4',u:'A#4',j:'B4',k:'C5',o:'C#5',l:'D5',p:'D#5' };
   const held = new Set();
   document.addEventListener('keydown', e => {
+    if (libModal.classList.contains('open')) return;
     if (e.target.tagName === 'INPUT' || e.repeat) return;
     const n = KM[e.key.toLowerCase()];
     if (n && !held.has(e.key)) { held.add(e.key); Audio.play(n, 0.7); Piano.light(n, 280); Piano.scrollTo(n); }
