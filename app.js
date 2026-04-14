@@ -1,20 +1,22 @@
 (function () {
   const $ = id => document.getElementById(id);
 
-  const input     = $('search');
-  const dropdown  = $('dropdown');
-  const welcome   = $('welcome');
-  const bar       = $('playerBar');
-  const sheet     = $('sheet');
-  const progBar   = $('progBar');
-  const btnPlay   = $('btnPlay');
-  const tempoEl   = $('tempo');
-  const tempoVal  = $('tempoVal');
+  const input    = $('search');
+  const dropdown = $('dropdown');
+  const welcome  = $('welcome');
+  const bar      = $('playerBar');
+  const sheet    = $('sheet');
+  const progBar  = $('progBar');
+  const btnPlay  = $('btnPlay');
+  const icPlay   = btnPlay.querySelector('.ic-play');
+  const icPause  = btnPlay.querySelector('.ic-pause');
+  const tempoEl  = $('tempo');
+  const tempoVal = $('tempoVal');
 
   let song = null, idx = 0, playing = false, paused = false, timer = null, selIdx = -1;
 
   Piano.build();
-  Piano.dragScroll();
+  Piano.initSlider();
 
   // --- Search ---
   input.addEventListener('input', () => {
@@ -50,7 +52,7 @@
 
   document.addEventListener('click', e => { if (!e.target.closest('.search')) dropdown.classList.remove('open'); });
 
-  // --- Play song ---
+  // --- Song ---
   window.playSong = function (id) {
     const s = SONGS.find(x => x.id === id);
     if (!s) return;
@@ -74,7 +76,7 @@
   function begin() {
     Audio.boot(); Audio.wake();
     playing = true; paused = false; idx = 0;
-    btnPlay.textContent = '⏸';
+    setIcon(false);
     next();
   }
 
@@ -107,8 +109,8 @@
   window.togglePlay = function () {
     if (!song) return;
     if (!playing) { begin(); return; }
-    if (paused) { paused = false; btnPlay.textContent = '⏸'; next(); }
-    else { paused = true; clearTimeout(timer); btnPlay.textContent = '▶'; }
+    if (paused) { paused = false; setIcon(false); next(); }
+    else { paused = true; clearTimeout(timer); setIcon(true); }
   };
 
   window.stopSong = function () { stop(); };
@@ -120,12 +122,17 @@
     Piano.unlight();
     sheet.querySelectorAll('.chip').forEach(c => c.classList.remove('now', 'done'));
     progBar.style.width = '0';
-    btnPlay.textContent = '▶';
+    setIcon(true);
+  }
+
+  function setIcon(showPlay) {
+    icPlay.style.display = showPlay ? '' : 'none';
+    icPause.style.display = showPlay ? 'none' : '';
   }
 
   tempoEl.addEventListener('input', () => { tempoVal.textContent = parseFloat(tempoEl.value).toFixed(1) + '×'; });
 
-  // --- Octave controls ---
+  // --- Controls ---
   $('rngOct').addEventListener('input', function () { $('valOct').textContent = this.value; Piano.setOct(+this.value); });
   $('rngStart').addEventListener('input', function () { $('valStart').textContent = 'C' + this.value; Piano.setStart(+this.value); });
 

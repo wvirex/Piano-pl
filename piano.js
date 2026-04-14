@@ -7,8 +7,8 @@ const Piano = (() => {
     const el = document.getElementById('piano');
     el.innerHTML = '';
     const s = getComputedStyle(document.documentElement);
-    const ww = parseFloat(s.getPropertyValue('--wk')) || 50;
-    const bw = parseFloat(s.getPropertyValue('--bk')) || 30;
+    const ww = parseFloat(s.getPropertyValue('--wk')) || 52;
+    const bw = parseFloat(s.getPropertyValue('--bk')) || 32;
     let wi = 0;
 
     for (let o = start; o < start + oct; o++) {
@@ -44,8 +44,8 @@ const Piano = (() => {
     bind(lk, last);
     el.appendChild(lk);
     wi++;
-
     el.style.width = (wi * ww) + 'px';
+    updateSliderRange();
   }
 
   function bind(k, note) {
@@ -70,29 +70,48 @@ const Piano = (() => {
 
   function scrollTo(note) {
     const k = document.querySelector('.key[data-note="' + note + '"]');
-    const v = document.getElementById('pianoScroll');
-    if (!k || !v) return;
-    v.scrollTo({ left: Math.max(0, k.offsetLeft - v.offsetWidth / 2 + k.offsetWidth / 2), behavior: 'smooth' });
+    const vp = document.getElementById('pianoViewport');
+    if (!k || !vp) return;
+    const target = Math.max(0, k.offsetLeft - vp.offsetWidth / 2 + k.offsetWidth / 2);
+    vp.scrollTo({ left: target, behavior: 'smooth' });
+    syncSliderFromScroll();
   }
 
   function setOct(n) { oct = n; build(); }
   function setStart(n) { start = n; build(); }
 
-  function dragScroll() {
-    const el = document.getElementById('pianoScroll');
-    let down = false, sx, sl;
-    el.addEventListener('mousedown', e => {
-      if (e.target.closest('.key')) return;
-      down = true; sx = e.pageX - el.offsetLeft; sl = el.scrollLeft;
-    });
-    el.addEventListener('mouseleave', () => down = false);
-    el.addEventListener('mouseup', () => down = false);
-    el.addEventListener('mousemove', e => {
-      if (!down) return;
-      e.preventDefault();
-      el.scrollLeft = sl - (e.pageX - el.offsetLeft - sx);
-    });
+  function updateSliderRange() {
+    const vp = document.getElementById('pianoViewport');
+    const piano = document.getElementById('piano');
+    const slider = document.getElementById('pianoSlider');
+    if (!vp || !piano || !slider) return;
+    const maxScroll = piano.scrollWidth - vp.clientWidth;
+    slider.max = Math.max(0, maxScroll);
+    slider.value = vp.scrollLeft;
   }
 
-  return { build, light, unlight, scrollTo, setOct, setStart, dragScroll };
+  function initSlider() {
+    const vp = document.getElementById('pianoViewport');
+    const slider = document.getElementById('pianoSlider');
+
+    slider.addEventListener('input', () => {
+      vp.scrollLeft = parseFloat(slider.value);
+    });
+
+    vp.addEventListener('scroll', () => {
+      slider.value = vp.scrollLeft;
+    });
+
+    window.addEventListener('resize', updateSliderRange);
+  }
+
+  function syncSliderFromScroll() {
+    const vp = document.getElementById('pianoViewport');
+    const slider = document.getElementById('pianoSlider');
+    if (vp && slider) {
+      setTimeout(() => { slider.value = vp.scrollLeft; }, 350);
+    }
+  }
+
+  return { build, light, unlight, scrollTo, setOct, setStart, initSlider };
 })();
