@@ -1,7 +1,8 @@
 const Piano = (() => {
-  const N = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
   const BL = new Set([1,3,6,8,10]);
-  let oct = 5, start = 2;
+  const OCT = 7;
+  const START = 1;
 
   function build() {
     const el = document.getElementById('piano');
@@ -11,9 +12,9 @@ const Piano = (() => {
     const bw = parseFloat(s.getPropertyValue('--bk')) || 32;
     let wi = 0;
 
-    for (let o = start; o < start + oct; o++) {
+    for (let o = START; o < START + OCT; o++) {
       for (let i = 0; i < 12; i++) {
-        const nn = N[i] + o;
+        const nn = NOTES[i] + o;
         const black = BL.has(i);
         const k = document.createElement('div');
         k.className = 'key ' + (black ? 'b' : 'w');
@@ -21,7 +22,7 @@ const Piano = (() => {
         const lb = document.createElement('span');
         lb.className = 'lbl';
         if (black) {
-          lb.textContent = N[i];
+          lb.textContent = NOTES[i];
           k.style.left = (wi * ww - bw / 2) + 'px';
         } else {
           lb.textContent = nn;
@@ -33,7 +34,7 @@ const Piano = (() => {
       }
     }
 
-    const last = 'C' + (start + oct);
+    const last = 'C' + (START + OCT);
     const lk = document.createElement('div');
     lk.className = 'key w';
     lk.dataset.note = last;
@@ -45,7 +46,7 @@ const Piano = (() => {
     el.appendChild(lk);
     wi++;
     el.style.width = (wi * ww) + 'px';
-    updateSliderRange();
+    updateSlider();
   }
 
   function bind(k, note) {
@@ -74,44 +75,32 @@ const Piano = (() => {
     if (!k || !vp) return;
     const target = Math.max(0, k.offsetLeft - vp.offsetWidth / 2 + k.offsetWidth / 2);
     vp.scrollTo({ left: target, behavior: 'smooth' });
-    syncSliderFromScroll();
+    setTimeout(syncSlider, 400);
   }
 
-  function setOct(n) { oct = n; build(); }
-  function setStart(n) { start = n; build(); }
-
-  function updateSliderRange() {
+  function updateSlider() {
     const vp = document.getElementById('pianoViewport');
     const piano = document.getElementById('piano');
-    const slider = document.getElementById('pianoSlider');
-    if (!vp || !piano || !slider) return;
-    const maxScroll = piano.scrollWidth - vp.clientWidth;
-    slider.max = Math.max(0, maxScroll);
-    slider.value = vp.scrollLeft;
+    const sl = document.getElementById('pianoSlider');
+    if (!vp || !piano || !sl) return;
+    const max = Math.max(0, piano.scrollWidth - vp.clientWidth);
+    sl.max = max;
+    sl.value = vp.scrollLeft;
+  }
+
+  function syncSlider() {
+    const vp = document.getElementById('pianoViewport');
+    const sl = document.getElementById('pianoSlider');
+    if (vp && sl) sl.value = vp.scrollLeft;
   }
 
   function initSlider() {
     const vp = document.getElementById('pianoViewport');
-    const slider = document.getElementById('pianoSlider');
-
-    slider.addEventListener('input', () => {
-      vp.scrollLeft = parseFloat(slider.value);
-    });
-
-    vp.addEventListener('scroll', () => {
-      slider.value = vp.scrollLeft;
-    });
-
-    window.addEventListener('resize', updateSliderRange);
+    const sl = document.getElementById('pianoSlider');
+    sl.addEventListener('input', () => { vp.scrollLeft = parseFloat(sl.value); });
+    vp.addEventListener('scroll', () => { sl.value = vp.scrollLeft; });
+    window.addEventListener('resize', updateSlider);
   }
 
-  function syncSliderFromScroll() {
-    const vp = document.getElementById('pianoViewport');
-    const slider = document.getElementById('pianoSlider');
-    if (vp && slider) {
-      setTimeout(() => { slider.value = vp.scrollLeft; }, 350);
-    }
-  }
-
-  return { build, light, unlight, scrollTo, setOct, setStart, initSlider };
+  return { build, light, unlight, scrollTo, initSlider };
 })();
