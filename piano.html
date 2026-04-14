@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <script>
+        (function() {
+            try {
+                var theme = localStorage.getItem('solfai_theme');
+                if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solf.ai — Piano Player</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="piano.css">
+    <link rel="icon" href="favicon.ico">
+</head>
+<body>
+    <div class="piano-app">
+        <!-- Header -->
+        <header class="piano-header">
+            <a href="index.html" class="logo">Solf<span class="logo-dot">.ai</span></a>
+            <h1 class="page-title">Piano Player</h1>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            </button>
+        </header>
+
+        <!-- Ad spaces (placeholder for future) -->
+        <aside class="ad-space ad-left" id="adLeft"></aside>
+        <aside class="ad-space ad-right" id="adRight"></aside>
+
+        <!-- Main content -->
+        <main class="piano-main">
+            <!-- Search -->
+            <div class="search-section">
+                <div class="search-box">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Поиск мелодии..." autocomplete="off">
+                    <button class="search-clear hidden" id="clearSearch">&times;</button>
+                </div>
+                <div class="search-results hidden" id="searchResults"></div>
+            </div>
+
+            <!-- Now Playing -->
+            <div class="now-playing hidden" id="nowPlaying">
+                <div class="np-info">
+                    <div class="np-title" id="npTitle">—</div>
+                    <div class="np-artist" id="npArtist">—</div>
+                </div>
+                <div class="np-controls">
+                    <button class="ctrl-btn" id="restartBtn" title="Сначала">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button class="ctrl-btn ctrl-play" id="playBtn" title="Играть">
+                        <svg class="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+                    </button>
+                    <button class="ctrl-btn" id="stopBtn" title="Стоп">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                    </button>
+                </div>
+                <div class="np-progress">
+                    <input type="range" id="progressBar" class="progress-bar" min="0" max="100" value="0" step="0.1">
+                    <div class="np-time">
+                        <span id="timeElapsed">0:00</span>
+                        <span id="timeDuration">0:00</span>
+                    </div>
+                </div>
+                <div class="np-speed">
+                    <span class="speed-label">Скорость:</span>
+                    <button class="speed-btn" data-speed="0.5">0.5×</button>
+                    <button class="speed-btn" data-speed="0.75">0.75×</button>
+                    <button class="speed-btn active" data-speed="1">1×</button>
+                    <button class="speed-btn" data-speed="1.5">1.5×</button>
+                    <button class="speed-btn" data-speed="2">2×</button>
+                </div>
+            </div>
+
+            <!-- Current note display -->
+            <div class="note-display" id="noteDisplay">
+                <div class="note-name" id="currentNoteName">—</div>
+                <div class="note-octave" id="currentNoteOctave"></div>
+            </div>
+
+            <!-- Waterfall (falling notes) -->
+            <div class="waterfall-container" id="waterfallContainer">
+                <canvas id="waterfallCanvas"></canvas>
+            </div>
+
+            <!-- Piano keyboard -->
+            <div class="piano-section">
+                <div class="piano-viewport" id="pianoViewport">
+                    <div class="piano-keyboard" id="pianoKeyboard"></div>
+                </div>
+
+                <!-- Octave navigator -->
+                <div class="octave-nav">
+                    <button class="octave-btn" id="octaveLeft" title="Сдвиг влево">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div class="octave-slider-wrap">
+                        <input type="range" id="octaveSlider" class="octave-slider" min="0" max="100" value="25">
+                        <div class="octave-labels" id="octaveLabels"></div>
+                    </div>
+                    <button class="octave-btn" id="octaveRight" title="Сдвиг вправо">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+                </div>
+
+                <!-- Piano minimap -->
+                <div class="piano-minimap" id="pianoMinimap">
+                    <div class="minimap-keys" id="minimapKeys"></div>
+                    <div class="minimap-viewport" id="minimapViewport"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="piano.js"></script>
+</body>
+</html>
