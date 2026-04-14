@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PianoPlay — Играй по нотам</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;--accent:#e94560;
+  --accent2:#0f3460;--text:#eee;--text2:#aaa;--gold:#f5c518;
+  --key-white:#f8f8f8;--key-black:#1a1a1a;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100dvh}
+
+/* Header */
+.header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;z-index:100}
+.logo{font-size:1.4rem;font-weight:800;letter-spacing:-1px}
+.logo span{color:var(--accent)}
+.search-box{flex:1;max-width:520px;position:relative;margin:0 auto}
+.search-box input{width:100%;padding:10px 42px 10px 16px;border-radius:24px;border:1px solid rgba(255,255,255,.1);background:var(--bg);color:var(--text);font-size:.95rem;outline:none;transition:border .2s}
+.search-box input:focus{border-color:var(--accent)}
+.search-box input::placeholder{color:var(--text2)}
+.search-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--text2);pointer-events:none}
+.search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:340px;overflow-y:auto;z-index:200;display:none}
+.search-results.active{display:block}
+.search-item{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .15s}
+.search-item:hover,.search-item.selected{background:rgba(233,69,96,.12)}
+.search-item .si-icon{width:36px;height:36px;border-radius:8px;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.search-item .si-info h4{font-size:.9rem;font-weight:600}
+.search-item .si-info p{font-size:.75rem;color:var(--text2);margin-top:2px}
+
+/* Main layout */
+.main{flex:1;display:flex;overflow:hidden;position:relative}
+.ad-left,.ad-right{width:160px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.04);color:var(--text2);font-size:.7rem;text-align:center;padding:12px;opacity:.5}
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* Now Playing */
+.now-playing{display:none;padding:12px 20px;background:linear-gradient(135deg,var(--surface2),var(--surface));border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;align-items:center;gap:16px}
+.now-playing.active{display:flex}
+.np-info{flex:1;min-width:0}
+.np-info h3{font-size:1rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-info p{font-size:.8rem;color:var(--text2)}
+.np-controls{display:flex;align-items:center;gap:10px}
+.np-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s}
+.np-btn:hover{transform:scale(1.08)}
+.np-btn.stop-btn{background:#444}
+.np-progress{flex:1;min-width:80px;max-width:240px}
+.np-progress input[type=range]{width:100%;accent-color:var(--accent)}
+.np-tempo{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2)}
+.np-tempo input{width:60px;accent-color:var(--accent)}
+
+/* Note Sheet */
+.note-sheet{flex:1;overflow-y:auto;padding:16px 20px;background:var(--bg);position:relative;min-height:80px}
+.note-sheet-inner{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;justify-content:center}
+.note-block{padding:6px 12px;border-radius:8px;background:var(--surface);font-size:.85rem;font-weight:600;transition:all .2s;border:2px solid transparent;min-width:44px;text-align:center}
+.note-block.active{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(1.12);box-shadow:0 0 16px rgba(233,69,96,.4)}
+.note-block.played{background:var(--surface2);border-color:var(--accent2);opacity:.7}
+.note-block.rest{background:transparent;border:2px dashed rgba(255,255,255,.1);color:var(--text2);font-style:italic}
+.sheet-placeholder{text-align:center;padding:40px 20px;color:var(--text2)}
+.sheet-placeholder h2{font-size:1.3rem;margin-bottom:8px}
+.sheet-placeholder p{font-size:.9rem;line-height:1.5}
+
+/* Piano Container */
+.piano-container{flex-shrink:0;background:var(--surface);border-top:1px solid rgba(255,255,255,.08);padding:0;position:relative}
+.octave-slider{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface2);border-top:1px solid rgba(255,255,255,.04)}
+.octave-slider label{font-size:.75rem;color:var(--text2);white-space:nowrap}
+.octave-slider input[type=range]{flex:1;accent-color:var(--accent)}
+.octave-slider .octave-info{font-size:.75rem;color:var(--gold);font-weight:600;min-width:60px;text-align:right}
+.piano-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;cursor:grab;position:relative}
+.piano-scroll:active{cursor:grabbing}
+.piano-scroll::-webkit-scrollbar{height:6px}
+.piano-scroll::-webkit-scrollbar-track{background:var(--surface2)}
+.piano-scroll::-webkit-scrollbar-thumb{background:var(--accent2);border-radius:3px}
+.piano{display:flex;position:relative;padding:0;height:var(--piano-h,180px);user-select:none;-webkit-user-select:none}
+.key{position:relative;border:1px solid rgba(0,0,0,.15);cursor:pointer;transition:background .08s,box-shadow .08s;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:8px}
+.key.white{width:var(--wk-w,48px);height:100%;background:linear-gradient(180deg,#e8e8e8 0%,var(--key-white) 20%);border-radius:0 0 6px 6px;z-index:1;flex-shrink:0}
+.key.white:active,.key.white.pressed{background:linear-gradient(180deg,#d0d0d0,#e0e0e0);box-shadow:inset 0 2px 6px rgba(0,0,0,.15)}
+.key.white.highlight{background:linear-gradient(180deg,rgba(233,69,96,.3),rgba(233,69,96,.5))!important;box-shadow:0 0 20px rgba(233,69,96,.5)}
+.key.black{width:var(--bk-w,30px);height:62%;background:linear-gradient(180deg,#333,var(--key-black));border-radius:0 0 4px 4px;position:absolute;z-index:2;box-shadow:0 4px 8px rgba(0,0,0,.4)}
+.key.black:active,.key.black.pressed{background:linear-gradient(180deg,#222,#333);box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.key.black.highlight{background:linear-gradient(180deg,rgba(233,69,96,.7),rgba(233,69,96,.9))!important;box-shadow:0 0 20px rgba(233,69,96,.5)}
+.key .key-label{font-size:9px;color:rgba(0,0,0,.45);font-weight:600;pointer-events:none}
+.key.black .key-label{color:rgba(255,255,255,.6)}
+
+/* Mobile */
+@media(max-width:900px){
+  .ad-left,.ad-right{display:none}
+  .header{padding:8px 10px;gap:8px}
+  .logo{font-size:1.1rem}
+}
+@media(max-width:600px){
+  .header{flex-wrap:wrap}
+  .search-box{max-width:100%;order:3;flex-basis:100%}
+  .np-progress{display:none}
+  .note-sheet{padding:10px 12px}
+  :root{--wk-w:36px;--bk-w:22px;--piano-h:140px}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+/* Animations */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.now-playing.active .np-info h3{animation:pulse 2s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">Piano<span>Play</span></div>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Поиск мелодии... (например: Лунная соната)" autocomplete="off">
+    <div class="search-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="ad-left">Реклама</div>
+  <div class="center">
+
+    <!-- Now Playing -->
+    <div class="now-playing" id="nowPlaying">
+      <div class="np-info">
+        <h3 id="npTitle">—</h3>
+        <p id="npArtist">—</p>
+      </div>
+      <div class="np-controls">
+        <button class="np-btn stop-btn" onclick="stopSong()" title="Стоп">■</button>
+        <button class="np-btn" id="playPauseBtn" onclick="togglePlayPause()" title="Пауза">⏸</button>
+      </div>
+      <div class="np-tempo">
+        <label>Темп:</label>
+        <input type="range" id="tempoSlider" min="0.3" max="2.5" step="0.1" value="1">
+        <span id="tempoValue">1.0x</span>
+      </div>
+    </div>
+
+    <!-- Note Sheet -->
+    <div class="note-sheet" id="noteSheet">
+      <div class="sheet-placeholder">
+        <h2>Добро пожаловать в PianoPlay!</h2>
+        <p>Введите название мелодии в поиске выше.<br>Ноты появятся здесь, а клавиши будут подсвечиваться при воспроизведении.</p>
+      </div>
+    </div>
+
+    <!-- Octave Slider -->
+    <div class="octave-slider">
+      <label>Октавы:</label>
+      <input type="range" id="octaveRange" min="2" max="8" step="1" value="4">
+      <span class="octave-info" id="octaveInfo">4 октавы</span>
+    </div>
+
+    <!-- Piano -->
+    <div class="piano-container">
+      <div class="piano-scroll" id="pianoScroll">
+        <div class="piano" id="piano"></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="ad-right">Реклама</div>
+</div>
+
+<script>
+// ====== Audio Engine (Web Audio API) ======
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function noteFrequency(note) {
+  const noteMap = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+  const match = note.match(/^([A-Ga-g]#?b?)(\d)$/);
+  if (!match) return 440;
+  const semitone = noteMap[match[1].charAt(0).toUpperCase() + match[1].slice(1)];
+  const octave = parseInt(match[2]);
+  return 440 * Math.pow(2, (semitone - 9 + (octave - 4) * 12) / 12);
+}
+
+function playNote(note, duration = 0.5) {
+  ensureAudio();
+  const freq = noteFrequency(note);
+  const now = audioCtx.currentTime;
+
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+
+  osc1.type = 'triangle';
+  osc1.frequency.setValueAtTime(freq, now);
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(freq, now);
+
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(3000, now);
+  filter.frequency.exponentialRampToValueAtTime(800, now + duration);
+
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.35, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.15, now + duration * 0.3);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + duration + 0.05);
+  osc2.stop(now + duration + 0.05);
+}
+
+// ====== Piano Keyboard ======
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const BLACK_SET = new Set([1,3,6,8,10]);
+let currentOctaves = 4;
+let startOctave = 2;
+
+function buildPiano() {
+  const piano = document.getElementById('piano');
+  piano.innerHTML = '';
+  const totalOctaves = currentOctaves;
+  let whiteIndex = 0;
+  const whiteW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wk-w')) || 48;
+  const blackW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bk-w')) || 30;
+
+  for (let oct = startOctave; oct < startOctave + totalOctaves; oct++) {
+    for (let n = 0; n < 12; n++) {
+      const noteName = NOTES[n] + oct;
+      const isBlack = BLACK_SET.has(n);
+      if (isBlack) {
+        const key = document.createElement('div');
+        key.className = 'key black';
+        key.dataset.note = noteName;
+        const offset = whiteIndex * whiteW - blackW / 2;
+        key.style.left = offset + 'px';
+        const lbl = document.createElement('span');
+        lbl.className = 'key-label';
+        lbl.textContent = NOTES[n];
+        key.appendChild(lbl);
+        key.addEventListener('pointerdown', e => { e.preventDefault(); onKeyPress(noteName); });
+        piano.appendChild(key);
+      } else {
+        const key = document.createElement('div');
+        key.className = 'key white';
+        key.dataset.note = noteName;
+        const lbl = document.createElement('span');
+        lbl.className = 'key-label';
+        lbl.textContent = noteName;
+        key.appendChild(lbl);
+        key.addEventListener('pointerdown', e => { e.preventDefault(); onKeyPress(noteName); });
+        piano.appendChild(key);
+        whiteIndex++;
+      }
+    }
+  }
+  const lastC = 'C' + (startOctave + totalOctaves);
+  const lk = document.createElement('div');
+  lk.className = 'key white';
+  lk.dataset.note = lastC;
+  const ll = document.createElement('span');
+  ll.className = 'key-label';
+  ll.textContent = lastC;
+  lk.appendChild(ll);
+  lk.addEventListener('pointerdown', e => { e.preventDefault(); onKeyPress(lastC); });
+  piano.appendChild(lk);
+  whiteIndex++;
+
+  piano.style.width = (whiteIndex * whiteW) + 'px';
+}
+
+function onKeyPress(note) {
+  playNote(note, 0.6);
+  highlightKey(note, 300);
+}
+
+function highlightKey(note, dur) {
+  const key = document.querySelector(`.key[data-note="${note}"]`);
+  if (key) {
+    key.classList.add('highlight');
+    setTimeout(() => key.classList.remove('highlight'), dur);
+  }
+}
+
+function scrollToKey(note) {
+  const key = document.querySelector(`.key[data-note="${note}"]`);
+  const scroll = document.getElementById('pianoScroll');
+  if (key && scroll) {
+    const keyRect = key.getBoundingClientRect();
+    const scrollRect = scroll.getBoundingClientRect();
+    const offset = key.offsetLeft - scroll.offsetWidth / 2 + key.offsetWidth / 2;
+    scroll.scrollTo({ left: offset, behavior: 'smooth' });
+  }
+}
+
+document.getElementById('octaveRange').addEventListener('input', e => {
+  currentOctaves = parseInt(e.target.value);
+  document.getElementById('octaveInfo').textContent = currentOctaves + ' октав';
+  buildPiano();
+});
+
+// Drag scroll for piano
+(function() {
+  const el = document.getElementById('pianoScroll');
+  let isDown = false, startX, scrollLeft;
+  el.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('key')) return;
+    isDown = true; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft;
+  });
+  el.addEventListener('mouseleave', () => isDown = false);
+  el.addEventListener('mouseup', () => isDown = false);
+  el.addEventListener('mousemove', e => {
+    if (!isDown) return; e.preventDefault();
+    el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX);
+  });
+})();
+
+// ====== Song Database ======
+const SONGS = [
+  {
+    id: 1, title: "Лунная соната", artist: "Бетховен", icon: "🌙",
+    notes: [
+      {n:"G#3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"A3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"A3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"A3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"A3",d:0.8},{n:"C#4",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"B3",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"B3",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"B3",d:0.8},{n:"E4",d:0.8},
+      {n:"G#3",d:0.8},{n:"B3",d:0.8},{n:"E4",d:0.8},
+    ]
+  },
+  {
+    id: 2, title: "К Элизе", artist: "Бетховен", icon: "💐",
+    notes: [
+      {n:"E5",d:0.3},{n:"D#5",d:0.3},{n:"E5",d:0.3},{n:"D#5",d:0.3},{n:"E5",d:0.3},
+      {n:"B4",d:0.3},{n:"D5",d:0.3},{n:"C5",d:0.3},{n:"A4",d:0.6},
+      {n:"REST",d:0.3},{n:"C4",d:0.3},{n:"E4",d:0.3},{n:"A4",d:0.6},
+      {n:"REST",d:0.3},{n:"E4",d:0.3},{n:"G#4",d:0.3},{n:"B4",d:0.6},
+      {n:"REST",d:0.3},{n:"E4",d:0.3},{n:"E5",d:0.3},{n:"D#5",d:0.3},
+      {n:"E5",d:0.3},{n:"D#5",d:0.3},{n:"E5",d:0.3},{n:"B4",d:0.3},
+      {n:"D5",d:0.3},{n:"C5",d:0.3},{n:"A4",d:0.6},
+      {n:"REST",d:0.3},{n:"C4",d:0.3},{n:"E4",d:0.3},{n:"A4",d:0.6},
+      {n:"REST",d:0.3},{n:"E4",d:0.3},{n:"C5",d:0.3},{n:"B4",d:0.6},
+    ]
+  },
+  {
+    id: 3, title: "Twinkle Twinkle Little Star", artist: "Детская", icon: "⭐",
+    notes: [
+      {n:"C4",d:0.5},{n:"C4",d:0.5},{n:"G4",d:0.5},{n:"G4",d:0.5},
+      {n:"A4",d:0.5},{n:"A4",d:0.5},{n:"G4",d:1.0},
+      {n:"F4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},{n:"E4",d:0.5},
+      {n:"D4",d:0.5},{n:"D4",d:0.5},{n:"C4",d:1.0},
+      {n:"G4",d:0.5},{n:"G4",d:0.5},{n:"F4",d:0.5},{n:"F4",d:0.5},
+      {n:"E4",d:0.5},{n:"E4",d:0.5},{n:"D4",d:1.0},
+      {n:"G4",d:0.5},{n:"G4",d:0.5},{n:"F4",d:0.5},{n:"F4",d:0.5},
+      {n:"E4",d:0.5},{n:"E4",d:0.5},{n:"D4",d:1.0},
+      {n:"C4",d:0.5},{n:"C4",d:0.5},{n:"G4",d:0.5},{n:"G4",d:0.5},
+      {n:"A4",d:0.5},{n:"A4",d:0.5},{n:"G4",d:1.0},
+      {n:"F4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},{n:"E4",d:0.5},
+      {n:"D4",d:0.5},{n:"D4",d:0.5},{n:"C4",d:1.0},
+    ]
+  },
+  {
+    id: 4, title: "Happy Birthday", artist: "Традиционная", icon: "🎂",
+    notes: [
+      {n:"G3",d:0.35},{n:"G3",d:0.35},{n:"A3",d:0.7},{n:"G3",d:0.7},
+      {n:"C4",d:0.7},{n:"B3",d:1.2},
+      {n:"G3",d:0.35},{n:"G3",d:0.35},{n:"A3",d:0.7},{n:"G3",d:0.7},
+      {n:"D4",d:0.7},{n:"C4",d:1.2},
+      {n:"G3",d:0.35},{n:"G3",d:0.35},{n:"G4",d:0.7},{n:"E4",d:0.7},
+      {n:"C4",d:0.7},{n:"B3",d:0.7},{n:"A3",d:1.2},
+      {n:"F4",d:0.35},{n:"F4",d:0.35},{n:"E4",d:0.7},{n:"C4",d:0.7},
+      {n:"D4",d:0.7},{n:"C4",d:1.2},
+    ]
+  },
+  {
+    id: 5, title: "Ode to Joy", artist: "Бетховен", icon: "🎵",
+    notes: [
+      {n:"E4",d:0.5},{n:"E4",d:0.5},{n:"F4",d:0.5},{n:"G4",d:0.5},
+      {n:"G4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},{n:"D4",d:0.5},
+      {n:"C4",d:0.5},{n:"C4",d:0.5},{n:"D4",d:0.5},{n:"E4",d:0.5},
+      {n:"E4",d:0.75},{n:"D4",d:0.25},{n:"D4",d:1.0},
+      {n:"E4",d:0.5},{n:"E4",d:0.5},{n:"F4",d:0.5},{n:"G4",d:0.5},
+      {n:"G4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},{n:"D4",d:0.5},
+      {n:"C4",d:0.5},{n:"C4",d:0.5},{n:"D4",d:0.5},{n:"E4",d:0.5},
+      {n:"D4",d:0.75},{n:"C4",d:0.25},{n:"C4",d:1.0},
+    ]
+  },
+  {
+    id: 6, title: "Jingle Bells", artist: "Рождественская", icon: "🎄",
+    notes: [
+      {n:"E4",d:0.4},{n:"E4",d:0.4},{n:"E4",d:0.8},
+      {n:"E4",d:0.4},{n:"E4",d:0.4},{n:"E4",d:0.8},
+      {n:"E4",d:0.4},{n:"G4",d:0.4},{n:"C4",d:0.4},{n:"D4",d:0.4},
+      {n:"E4",d:1.2},
+      {n:"F4",d:0.4},{n:"F4",d:0.4},{n:"F4",d:0.4},{n:"F4",d:0.4},
+      {n:"F4",d:0.4},{n:"E4",d:0.4},{n:"E4",d:0.4},{n:"E4",d:0.2},{n:"E4",d:0.2},
+      {n:"E4",d:0.4},{n:"D4",d:0.4},{n:"D4",d:0.4},{n:"E4",d:0.4},
+      {n:"D4",d:0.8},{n:"G4",d:0.8},
+    ]
+  },
+  {
+    id: 7, title: "Калинка", artist: "Русская народная", icon: "🫐",
+    notes: [
+      {n:"E4",d:0.4},{n:"E4",d:0.4},{n:"E4",d:0.4},{n:"E4",d:0.4},
+      {n:"A4",d:0.8},{n:"G4",d:0.4},{n:"F4",d:0.4},
+      {n:"E4",d:0.8},{n:"D4",d:0.4},{n:"E4",d:0.4},
+      {n:"F4",d:0.4},{n:"E4",d:0.4},{n:"D4",d:0.4},{n:"C4",d:0.4},
+      {n:"D4",d:0.8},{n:"E4",d:0.8},
+      {n:"A3",d:0.4},{n:"B3",d:0.4},{n:"C4",d:0.4},{n:"D4",d:0.4},
+      {n:"E4",d:0.8},{n:"E4",d:0.8},
+    ]
+  },
+  {
+    id: 8, title: "Canon in D", artist: "Пахельбель", icon: "🎻",
+    notes: [
+      {n:"F#5",d:0.5},{n:"E5",d:0.5},{n:"D5",d:0.5},{n:"C#5",d:0.5},
+      {n:"B4",d:0.5},{n:"A4",d:0.5},{n:"B4",d:0.5},{n:"C#5",d:0.5},
+      {n:"D5",d:0.5},{n:"C#5",d:0.5},{n:"B4",d:0.5},{n:"A4",d:0.5},
+      {n:"G4",d:0.5},{n:"F#4",d:0.5},{n:"G4",d:0.5},{n:"A4",d:0.5},
+      {n:"F#4",d:0.5},{n:"G4",d:0.5},{n:"A4",d:0.25},{n:"G4",d:0.25},
+      {n:"F#4",d:0.5},{n:"E4",d:0.5},{n:"D4",d:0.5},{n:"E4",d:0.5},
+      {n:"F#4",d:0.5},{n:"E4",d:0.25},{n:"D4",d:0.25},{n:"E4",d:0.5},
+      {n:"F#4",d:0.5},{n:"G4",d:0.5},{n:"A4",d:0.5},
+    ]
+  },
+  {
+    id: 9, title: "Турецкий марш", artist: "Моцарт", icon: "🎼",
+    notes: [
+      {n:"B4",d:0.2},{n:"A4",d:0.2},{n:"G#4",d:0.2},{n:"A4",d:0.2},
+      {n:"C5",d:0.5},{n:"REST",d:0.2},{n:"D5",d:0.2},{n:"C5",d:0.2},
+      {n:"B4",d:0.2},{n:"C5",d:0.2},{n:"E5",d:0.5},{n:"REST",d:0.2},
+      {n:"F5",d:0.2},{n:"E5",d:0.2},{n:"D#5",d:0.2},{n:"E5",d:0.2},
+      {n:"B5",d:0.2},{n:"A5",d:0.2},{n:"G#5",d:0.2},{n:"A5",d:0.2},
+      {n:"B5",d:0.2},{n:"A5",d:0.2},{n:"G#5",d:0.2},{n:"A5",d:0.2},
+      {n:"C6",d:0.8},
+    ]
+  },
+  {
+    id: 10, title: "Собачий вальс", artist: "Популярная", icon: "🐶",
+    notes: [
+      {n:"F#4",d:0.3},{n:"G4",d:0.3},{n:"F#4",d:0.3},{n:"D4",d:0.6},
+      {n:"REST",d:0.2},{n:"F#4",d:0.3},{n:"G4",d:0.3},{n:"F#4",d:0.3},{n:"D4",d:0.6},
+      {n:"REST",d:0.2},{n:"D4",d:0.3},{n:"F#4",d:0.3},{n:"A4",d:0.3},{n:"G4",d:0.6},
+      {n:"F#4",d:0.3},{n:"E4",d:0.3},{n:"D4",d:0.3},
+      {n:"F#4",d:0.3},{n:"G4",d:0.3},{n:"F#4",d:0.3},{n:"D4",d:0.6},
+      {n:"REST",d:0.2},{n:"F#4",d:0.3},{n:"G4",d:0.3},{n:"F#4",d:0.3},{n:"D4",d:0.6},
+      {n:"REST",d:0.2},{n:"A4",d:0.3},{n:"G4",d:0.3},{n:"F#4",d:0.3},{n:"E4",d:0.3},{n:"D4",d:0.6},
+    ]
+  },
+  {
+    id: 11, title: "Катюша", artist: "Русская военная", icon: "🌸",
+    notes: [
+      {n:"D4",d:0.5},{n:"F4",d:0.5},{n:"A4",d:0.5},{n:"A4",d:0.25},{n:"G4",d:0.25},
+      {n:"A4",d:0.5},{n:"F4",d:0.75},{n:"REST",d:0.25},
+      {n:"E4",d:0.5},{n:"G4",d:0.5},{n:"F4",d:0.5},{n:"F4",d:0.25},{n:"E4",d:0.25},
+      {n:"F4",d:0.5},{n:"D4",d:0.75},{n:"REST",d:0.25},
+      {n:"D4",d:0.5},{n:"F4",d:0.5},{n:"A4",d:0.5},{n:"A4",d:0.25},{n:"G4",d:0.25},
+      {n:"A4",d:0.5},{n:"C5",d:0.5},{n:"A#4",d:0.5},{n:"A4",d:0.5},
+      {n:"G4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},{n:"D4",d:0.75},
+    ]
+  },
+  {
+    id: 12, title: "Марсельеза", artist: "Французский гимн", icon: "🇫🇷",
+    notes: [
+      {n:"C4",d:0.35},{n:"C4",d:0.35},{n:"C4",d:0.35},{n:"F4",d:0.7},
+      {n:"F4",d:0.7},{n:"G4",d:0.7},{n:"G4",d:0.7},
+      {n:"C5",d:0.5},{n:"A4",d:0.5},{n:"F4",d:0.5},{n:"A4",d:0.5},
+      {n:"G4",d:1.0},{n:"REST",d:0.3},
+      {n:"G4",d:0.35},{n:"A4",d:0.35},{n:"G4",d:0.35},{n:"F4",d:0.7},
+      {n:"E4",d:0.5},{n:"F4",d:0.5},{n:"G4",d:1.0},
+    ]
+  },
+  {
+    id: 13, title: "Токката ре минор", artist: "Бах", icon: "⛪",
+    notes: [
+      {n:"A5",d:0.15},{n:"G5",d:0.15},{n:"A5",d:0.6},
+      {n:"G5",d:0.15},{n:"F5",d:0.15},{n:"E5",d:0.15},{n:"D5",d:0.15},
+      {n:"C#5",d:0.3},{n:"D5",d:0.8},
+      {n:"REST",d:0.3},
+      {n:"A4",d:0.15},{n:"G4",d:0.15},{n:"A4",d:0.6},
+      {n:"E4",d:0.15},{n:"F4",d:0.15},{n:"C#4",d:0.15},{n:"D4",d:0.6},
+      {n:"REST",d:0.3},
+      {n:"A3",d:0.15},{n:"G3",d:0.15},{n:"A3",d:0.6},
+      {n:"E3",d:0.15},{n:"F3",d:0.15},{n:"C#3",d:0.15},{n:"D3",d:1.0},
+    ]
+  },
+  {
+    id: 14, title: "Имперский марш", artist: "Звёздные войны", icon: "⚔️",
+    notes: [
+      {n:"G3",d:0.5},{n:"G3",d:0.5},{n:"G3",d:0.5},
+      {n:"D#3",d:0.35},{n:"A#3",d:0.15},{n:"G3",d:0.5},
+      {n:"D#3",d:0.35},{n:"A#3",d:0.15},{n:"G3",d:1.0},
+      {n:"D4",d:0.5},{n:"D4",d:0.5},{n:"D4",d:0.5},
+      {n:"D#4",d:0.35},{n:"A#3",d:0.15},{n:"F#3",d:0.5},
+      {n:"D#3",d:0.35},{n:"A#3",d:0.15},{n:"G3",d:1.0},
+    ]
+  },
+  {
+    id: 15, title: "River Flows in You", artist: "Yiruma", icon: "🌊",
+    notes: [
+      {n:"F#4",d:0.25},{n:"G#4",d:0.25},{n:"A4",d:0.25},{n:"G#4",d:0.25},
+      {n:"F#4",d:0.25},{n:"E4",d:0.25},{n:"F#4",d:0.5},{n:"B3",d:0.5},
+      {n:"REST",d:0.25},{n:"E4",d:0.25},{n:"F#4",d:0.25},{n:"E4",d:0.25},
+      {n:"C#4",d:0.5},{n:"E4",d:0.5},{n:"F#4",d:0.5},
+      {n:"F#4",d:0.25},{n:"G#4",d:0.25},{n:"A4",d:0.25},{n:"G#4",d:0.25},
+      {n:"F#4",d:0.25},{n:"E4",d:0.25},{n:"F#4",d:0.5},{n:"B3",d:0.5},
+      {n:"REST",d:0.25},{n:"E4",d:0.25},{n:"C#4",d:0.5},{n:"B3",d:0.75},
+    ]
+  },
+  {
+    id: 16, title: "Лебединое озеро", artist: "Чайковский", icon: "🦢",
+    notes: [
+      {n:"A4",d:0.5},{n:"B4",d:0.25},{n:"C5",d:0.25},{n:"D5",d:0.5},{n:"E5",d:0.25},{n:"D5",d:0.25},
+      {n:"C5",d:0.5},{n:"B4",d:0.5},{n:"A4",d:0.75},{n:"REST",d:0.25},
+      {n:"A4",d:0.5},{n:"B4",d:0.25},{n:"C5",d:0.25},{n:"D5",d:0.5},{n:"E5",d:0.25},{n:"D5",d:0.25},
+      {n:"C5",d:0.5},{n:"B4",d:0.5},{n:"A4",d:0.75},{n:"REST",d:0.25},
+      {n:"E5",d:0.5},{n:"F5",d:0.25},{n:"E5",d:0.25},{n:"D5",d:0.5},{n:"C5",d:0.5},
+      {n:"B4",d:0.5},{n:"C5",d:0.25},{n:"B4",d:0.25},{n:"A4",d:1.0},
+    ]
+  },
+  {
+    id: 17, title: "Подмосковные вечера", artist: "Соловьёв-Седой", icon: "🌃",
+    notes: [
+      {n:"E4",d:0.5},{n:"E4",d:0.5},{n:"F4",d:0.5},{n:"G4",d:0.5},
+      {n:"C5",d:0.75},{n:"B4",d:0.25},{n:"A4",d:0.5},{n:"G4",d:0.5},
+      {n:"A4",d:0.5},{n:"G4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},
+      {n:"D4",d:1.0},{n:"REST",d:0.5},
+      {n:"D4",d:0.5},{n:"E4",d:0.5},{n:"F4",d:0.5},{n:"G4",d:0.5},
+      {n:"A4",d:0.5},{n:"G4",d:0.5},{n:"F4",d:0.5},{n:"E4",d:0.5},
+      {n:"C4",d:1.0},
+    ]
+  },
+  {
+    id: 18, title: "Sunny", artist: "Bobby Hebb", icon: "☀️",
+    notes: [
+      {n:"A4",d:0.5},{n:"C5",d:0.5},{n:"E5",d:0.5},{n:"A5",d:0.75},
+      {n:"G5",d:0.25},{n:"F5",d:0.5},{n:"E5",d:0.5},
+      {n:"D5",d:0.5},{n:"C5",d:0.5},{n:"B4",d:0.5},{n:"A4",d:0.75},
+      {n:"REST",d:0.25},{n:"A4",d:0.5},{n:"B4",d:0.5},
+      {n:"C5",d:0.5},{n:"D5",d:0.5},{n:"E5",d:0.5},{n:"D5",d:0.5},
+      {n:"C5",d:0.5},{n:"B4",d:0.5},{n:"A4",d:1.0},
+    ]
+  },
+];
+
+// ====== Search ======
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+let selectedIdx = -1;
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q) { searchResults.classList.remove('active'); return; }
+  const filtered = SONGS.filter(s =>
+    s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
+  );
+  if (!filtered.length) {
+    searchResults.innerHTML = '<div style="padding:16px;color:var(--text2);text-align:center">Ничего не найдено</div>';
+    searchResults.classList.add('active');
+    return;
+  }
+  selectedIdx = -1;
+  searchResults.innerHTML = filtered.map((s, i) => `
+    <div class="search-item" data-id="${s.id}" onclick="selectSong(${s.id})">
+      <div class="si-icon">${s.icon}</div>
+      <div class="si-info"><h4>${s.title}</h4><p>${s.artist}</p></div>
+    </div>
+  `).join('');
+  searchResults.classList.add('active');
+});
+
+searchInput.addEventListener('keydown', e => {
+  const items = searchResults.querySelectorAll('.search-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, items.length - 1); updateSelected(items); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); updateSelected(items); }
+  else if (e.key === 'Enter' && selectedIdx >= 0) { e.preventDefault(); items[selectedIdx].click(); }
+});
+
+function updateSelected(items) {
+  items.forEach((el, i) => el.classList.toggle('selected', i === selectedIdx));
+  if (items[selectedIdx]) items[selectedIdx].scrollIntoView({ block: 'nearest' });
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-box')) searchResults.classList.remove('active');
+});
+
+// ====== Playback ======
+let currentSong = null;
+let playbackTimer = null;
+let currentNoteIdx = 0;
+let isPlaying = false;
+let isPaused = false;
+
+function selectSong(id) {
+  const song = SONGS.find(s => s.id === id);
+  if (!song) return;
+  searchResults.classList.remove('active');
+  searchInput.value = song.title;
+  stopSong();
+  currentSong = song;
+  renderNoteSheet(song);
+  document.getElementById('nowPlaying').classList.add('active');
+  document.getElementById('npTitle').textContent = song.title;
+  document.getElementById('npArtist').textContent = song.artist;
+  startPlayback();
+}
+
+function renderNoteSheet(song) {
+  const sheet = document.getElementById('noteSheet');
+  sheet.innerHTML = '<div class="note-sheet-inner">' +
+    song.notes.map((n, i) =>
+      n.n === 'REST'
+        ? `<div class="note-block rest" data-idx="${i}">♩</div>`
+        : `<div class="note-block" data-idx="${i}">${n.n}</div>`
+    ).join('') + '</div>';
+}
+
+function startPlayback() {
+  ensureAudio();
+  isPlaying = true;
+  isPaused = false;
+  currentNoteIdx = 0;
+  document.getElementById('playPauseBtn').textContent = '⏸';
+  playNextNote();
+}
+
+function playNextNote() {
+  if (!isPlaying || isPaused || !currentSong) return;
+  if (currentNoteIdx >= currentSong.notes.length) {
+    stopSong();
+    return;
+  }
+  const noteData = currentSong.notes[currentNoteIdx];
+  const tempo = parseFloat(document.getElementById('tempoSlider').value) || 1;
+  const dur = noteData.d / tempo;
+
+  const blocks = document.querySelectorAll('.note-block');
+  blocks.forEach(b => b.classList.remove('active'));
+  const activeBlock = blocks[currentNoteIdx];
+  if (activeBlock) {
+    activeBlock.classList.add('active');
+    activeBlock.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+
+  for (let i = 0; i < currentNoteIdx; i++) {
+    if (blocks[i]) blocks[i].classList.add('played');
+  }
+
+  if (noteData.n !== 'REST') {
+    playNote(noteData.n, dur * 0.9);
+    highlightKey(noteData.n, dur * 900);
+    scrollToKey(noteData.n);
+  }
+
+  currentNoteIdx++;
+  playbackTimer = setTimeout(playNextNote, dur * 1000);
+}
+
+function togglePlayPause() {
+  if (!currentSong) return;
+  if (isPaused) {
+    isPaused = false;
+    document.getElementById('playPauseBtn').textContent = '⏸';
+    playNextNote();
+  } else if (isPlaying) {
+    isPaused = true;
+    clearTimeout(playbackTimer);
+    document.getElementById('playPauseBtn').textContent = '▶';
+  } else {
+    startPlayback();
+  }
+}
+
+function stopSong() {
+  isPlaying = false;
+  isPaused = false;
+  clearTimeout(playbackTimer);
+  document.querySelectorAll('.key').forEach(k => k.classList.remove('highlight'));
+  document.querySelectorAll('.note-block').forEach(b => { b.classList.remove('active'); b.classList.remove('played'); });
+  document.getElementById('playPauseBtn').textContent = '▶';
+}
+
+document.getElementById('tempoSlider').addEventListener('input', e => {
+  document.getElementById('tempoValue').textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+});
+
+// ====== Init ======
+buildPiano();
+
+// Keyboard play with computer keyboard
+const KEY_MAP = {
+  'a':'C4','w':'C#4','s':'D4','e':'D#4','d':'E4','f':'F4',
+  't':'F#4','g':'G4','y':'G#4','h':'A4','u':'A#4','j':'B4',
+  'k':'C5','o':'C#5','l':'D5','p':'D#5',';':'E5',"'":'F5'
+};
+const pressedKeys = new Set();
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const note = KEY_MAP[e.key.toLowerCase()];
+  if (note && !pressedKeys.has(e.key)) {
+    pressedKeys.add(e.key);
+    onKeyPress(note);
+  }
+});
+document.addEventListener('keyup', e => { pressedKeys.delete(e.key); });
+</script>
+</body>
+</html>
