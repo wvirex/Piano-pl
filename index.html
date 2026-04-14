@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PianoPlay</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo">Piano<span>Play</span></div>
+    <div class="search">
+      <input type="text" id="search" placeholder="Поиск мелодии..." autocomplete="off">
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+  </header>
+
+  <div class="body-row">
+    <aside class="ad">Реклама</aside>
+
+    <main>
+      <div id="welcome">
+        <h2>Найдите мелодию в поиске</h2>
+        <p>Ноты появятся здесь, а клавиши подсветятся при воспроизведении</p>
+        <div class="quick">
+          <button onclick="playSong(3)">Twinkle Star</button>
+          <button onclick="playSong(2)">К Элизе</button>
+          <button onclick="playSong(14)">Имперский марш</button>
+          <button onclick="playSong(12)">River Flows</button>
+        </div>
+      </div>
+
+      <div id="playerBar" class="player-bar hidden">
+        <div class="player-left">
+          <span id="pIcon">🎵</span>
+          <div class="player-meta">
+            <strong id="pTitle"></strong>
+            <small id="pArtist"></small>
+          </div>
+        </div>
+        <div class="player-center">
+          <button class="pb" onclick="restartSong()">⏮</button>
+          <button class="pb main" id="btnPlay" onclick="togglePlay()">▶</button>
+          <button class="pb" onclick="stopSong()">⏹</button>
+        </div>
+        <div class="player-right">
+          <label>Темп</label>
+          <input type="range" id="tempo" min="0.3" max="2.5" step="0.05" value="1">
+          <span id="tempoVal">1.0×</span>
+        </div>
+        <div class="progress"><div id="progBar"></div></div>
+      </div>
+
+      <div id="sheet" class="sheet hidden"></div>
+
+      <div class="piano-area">
+        <div class="piano-controls">
+          <label>Октавы <input type="range" id="rngOct" min="2" max="8" value="5"> <span id="valOct">5</span></label>
+          <label>Старт <input type="range" id="rngStart" min="1" max="6" value="2"> <span id="valStart">C2</span></label>
+        </div>
+        <div class="piano-scroll" id="pianoScroll">
+          <div class="piano" id="piano"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="ad">Реклама</aside>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="songs.js"></script>
+  <script src="piano.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
